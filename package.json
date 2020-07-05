@@ -1,0 +1,21 @@
+{
+    "dependencies": {
+        "@airtable/blocks": "0.0.53",
+        "json-diff": "^0.5.4",
+        "moment": "^2.27.0",
+        "react": "^16.13.0",
+        "react-browser-notifications": "^1.0.14",
+        "react-dom": "^16.13.0",
+        "react-notification-system": "^0.4.0",
+        "react-timeline-scribble": "^1.0.14",
+        "react-vertical-timeline-component": "^3.0.2"
+    },
+    "devDependencies": {
+        "eslint": "^6.8.0",
+        "eslint-plugin-react": "^7.18.3",
+        "eslint-plugin-react-hooks": "^2.5.0"
+    },
+    "scripts": {
+        "lint": "eslint frontend"
+    }
+}
