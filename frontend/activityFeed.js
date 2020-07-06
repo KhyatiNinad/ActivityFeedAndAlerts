@@ -25,8 +25,6 @@ export class ActivityFeed extends React.Component {
   constructor(props) {
     super(props);
 
-
-    debugger;
     this.globalConfig = this.props.globalConfig;
 
     this.GlobalConfigKeys = this.props.GlobalConfigKeys;
@@ -66,8 +64,6 @@ export class ActivityFeed extends React.Component {
 
     if ((prevProps.timeStamp) !== (this.props.timeStamp)) {
 
-      debugger;
-
       var pvRecords = JSON.parse(this.previousRecords);
 
       var curRecords = this.props.records.data.map(record => {
@@ -89,9 +85,12 @@ export class ActivityFeed extends React.Component {
 
         if (lastData.length > 0 && currentData.length > 0) {
           console.log("Writing Diff:");
+          console.log(lastData);
+          console.log(currentData);
 
           if (typeof lastData[0].records !== 'undefined' && typeof currentData[0].records !== 'undefined') {
             var difference = diff(lastData[0].records, currentData[0].records);
+            console.log(difference);
             if (typeof difference !== 'undefined') {
               var allRecords = this.props.records.data.filter((e) => { return e.id == tabId });
               var rec = [];
@@ -231,7 +230,6 @@ export class ActivityFeed extends React.Component {
 
 
   showNotifications() {
-    debugger;
     if (this.n.supported() && this.allowNotification) {
       var prm = Notification.permission;
       if (prm == 'default' || prm == 'denied') {
@@ -523,7 +521,6 @@ export class ActivityFeed extends React.Component {
           }
         }
         else {
-          debugger;
 
           return (<VerticalTimelineElement key={e.recordId}
             className="vertical-timeline-element--work slide"

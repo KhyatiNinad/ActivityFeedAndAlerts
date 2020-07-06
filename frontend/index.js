@@ -7,28 +7,21 @@ import {
     Box,
     Heading,
     ViewPickerSynced,
-    RecordCard,
     TablePickerSynced,
     FormField,
-    FieldPickerSynced,
     Button,
     Text, Icon,
     ViewportConstraint,
-    colors,
-    colorUtils,
     useSession,
     Dialog,
     SelectButtons,
-    useViewport,
-    Label,
-     CollaboratorToken, Tooltip 
+    Label
 } from '@airtable/blocks/ui';
 import React, { useState } from 'react';
-import { FieldType } from '@airtable/blocks/models';
 import moment from 'moment';
+import parse from 'html-react-parser';
 
-import { diffString, diff } from 'json-diff';
-import {ActivityFeed} from './activityFeed';
+import { ActivityFeed } from './activityFeed';
 import CollabInfo from './collabInfo';
 
 const GlobalConfigKeys = {
@@ -41,7 +34,10 @@ const GlobalConfigKeys = {
 
 function ActivityFeedAndAlertsBlock() {
     const VIEWPORT_MIN_WIDTH = 345;
-    const VIEWPORT_MIN_HEIGHT = 200;
+    const VIEWPORT_MIN_HEIGHT = 245;
+    const [isDialogOpen, setIsDialogOpen] = useState(true);
+
+
     const base = useBase();
     const globalConfig = useGlobalConfig();
 
@@ -57,6 +53,7 @@ function ActivityFeedAndAlertsBlock() {
     const allowNotification = globalConfig.get(currentUser + "_" + GlobalConfigKeys.NOTIFICATION_ID) === "Yes" ? true : false;
 
     const initialSetupDone = currentConfig ? (currentConfig.length > 0 ? true : false) : false;
+
 
     // Use settings menu to hide away table pickers
     const [isShowingSettings, setIsShowingSettings] = useState(!initialSetupDone);
@@ -94,8 +91,12 @@ function ActivityFeedAndAlertsBlock() {
     }
 
     var watches = {
-        timeStamp : moment().utc().unix(),
-        data: []};
+        timeStamp: moment().utc().unix(),
+        data: []
+    };
+
+
+
 
     base.tables.forEach(e => {
 
@@ -104,16 +105,21 @@ function ActivityFeedAndAlertsBlock() {
         var tId = e.id;
         var vId = null;
 
-        var config = currentConfig.filter(e => { return e.tableId == tId; });
-        var table = null;
-        var view = null;
-        table = base.getTableByIdIfExists(tId);
+        if (typeof currentConfig !== 'undefined') {
+            if (currentConfig.length > 0) {
+                var config = currentConfig.filter(e => { return e.tableId == tId; });
+                var table = null;
+                var view = null;
+                table = base.getTableByIdIfExists(tId);
 
-        if (config.length > 0) {
-            vId = config[0].viewId;
-            var view = table ? table.getViewByIdIfExists(vId) : null;
+                if (config.length > 0) {
+                    vId = config[0].viewId;
+                    view = table ? table.getViewByIdIfExists(vId) : null;
 
+                }
+            }
         }
+
 
         var rec = useRecords(view ? view.selectRecords() :
             (table ? table.selectRecords() : null));
@@ -121,7 +127,7 @@ function ActivityFeedAndAlertsBlock() {
         watches.data.push({ id: tId, records: rec });
     });
 
-   // console.log(watches);
+
 
     if (isShowingSettings) {
         return (
@@ -131,9 +137,45 @@ function ActivityFeedAndAlertsBlock() {
                     base={base}
                     initialSetupDone={initialSetupDone}
                     currentUser={currentUser}
+                    openHelp={() => setIsDialogOpen(true)}
                     onDoneClick={() => setIsShowingSettings(false)}
                     handleAddNewRule={handleAddNewRule}
                 />
+                {isDialogOpen && (
+                    <Dialog onClose={() => setIsDialogOpen(false)} width="80%">
+                        <Dialog.CloseButton />
+                        <Heading>Welcome to Activity Feed and Alerts</Heading>
+                        <Text variant="paragraph">
+                            {parse(`
+                            Track the User Activity of all Active Users on all of the tables in your AirTable and get real-time updates and alerts.
+                            <br/><br/>
+                            <b>Features:</b>
+                            <ul>
+                            <li>Keep a watch on Multiple Tables and/or Views
+                            </li><li>Every user can configure his own set of rules. Does not depend on any Global configuration
+                            </li><li>Get Activity Feed in Real Time
+                            </li><li>Open up the Record directly from the Activity Feed
+                            </li><li>Get color-coded information on whether record was created/updated/deleted
+                            </li><li>Get details of Which Fields were updated (Old Value to New Value)
+                            </li><li>System Alerts using Javascript Notification API to alert user whenever a "new" record is updated. If same was updated, there will not be any alerts
+                            </li><li>In case Notification API do not have required permission, fallback to Toast based Alerts to the users
+                            </li></ul>
+                            <br/>
+                            <b>How to Configure:</b>
+                            Go to Settings and Add New Rule (you can add multiple rules, one per table), wherein you can select below details:
+                            <ol>
+                            <li><b>Table:</b> Select the Table which you wish to monitor - Mandatory</li>
+                            <li><b>View:</b> Select the View of the Table which you wish to monitor - Optional. If not selected, entire Table will be monitored</li>
+                            </ol>
+                            Once done, click 'Add Rule'. Repeat for as many tables as you wish to monitor. Once done, click on 'Done'.
+                            <br/>
+                            If you wish to have Alerts, click on 'Yes' for 'Enable Notifications'<br/>
+                            That's it. Now get real-time Activity Feed and Alerts in your block.
+                            `)}
+                        </Text>
+                        <Button onClick={() => setIsDialogOpen(false)}>Close</Button>
+                    </Dialog>
+                )}
             </ViewportConstraint>
         )
     } else {
@@ -143,9 +185,9 @@ function ActivityFeedAndAlertsBlock() {
             <ViewportConstraint minSize={{ width: VIEWPORT_MIN_WIDTH, height: VIEWPORT_MIN_HEIGHT }}>
                 <CollabInfo ></CollabInfo>
                 <Box paddingX={2} marginX={1}>
-                <Heading size="default">Activity Feed</Heading>
-                    <ActivityFeedBox records={watches} globalConfig={globalConfig} 
-                    currentUser={currentUser} base={base} allowNotification={allowNotification}/>
+                    <Heading size="default">Activity Feed</Heading>
+                    <ActivityFeedBox records={watches} globalConfig={globalConfig}
+                        currentUser={currentUser} base={base} allowNotification={allowNotification} />
                 </Box>
             </ViewportConstraint>
         );
@@ -165,10 +207,10 @@ function ActivityFeedBox(props) {
     }
     else {
         return (
-            <Box padding={1}  key="activityBoxData">
-                <ActivityFeed records={props.records} timeStamp={props.records.timeStamp}  
-                globalConfig={props.globalConfig} currentUser={props.currentUser} GlobalConfigKeys={GlobalConfigKeys}
-                base={props.base} allowNotification={props.allowNotification} />
+            <Box padding={1} key="activityBoxData">
+                <ActivityFeed records={props.records} timeStamp={props.records.timeStamp}
+                    globalConfig={props.globalConfig} currentUser={props.currentUser} GlobalConfigKeys={GlobalConfigKeys}
+                    base={props.base} allowNotification={props.allowNotification} />
             </Box>
         );
     }
@@ -203,7 +245,13 @@ function SettingsMenu(props) {
     return (
         <div>
             <Heading margin={2}>
-                Activity Feed Configuration
+                Activity Feed Configuration<Button
+                    onClick={() => props.openHelp()}
+                    size="small"
+                    icon="help"
+                    aria-label="Help"
+                    style={{ marginLeft: '10px' }}
+                />
             </Heading>
             <div>
                 <Box padding={3} borderBottom="thick">
@@ -211,22 +259,22 @@ function SettingsMenu(props) {
                 </Box>
 
                 <Heading padding={3} size="small">Add New Rule</Heading>
-               
+
                 <AddConfigForm base={props.base} currentUser={props.currentUser} globalConfig={props.globalConfig} onClick={props.handleAddNewRule} />
             </div>
             <div>
-            <Box padding={3} borderTop="thick" borderBottom="thick">
-            <FormField label="Enable Notifications">
-                                        <SelectButtons
-                                            value={props.globalConfig.get(props.currentUser + "_" + GlobalConfigKeys.NOTIFICATION_ID)}
-                                            onChange={newValue => {
-                                                props.globalConfig.setAsync(props.currentUser + "_" + GlobalConfigKeys.NOTIFICATION_ID, newValue);
-                                            }}
-                                            options={options}
-                                            width="320px"
-                                        />
-                                        </FormField>
-                                        </Box>
+                <Box padding={3} borderTop="thick" borderBottom="thick">
+                    <FormField label="Enable Notifications">
+                        <SelectButtons
+                            value={props.globalConfig.get(props.currentUser + "_" + GlobalConfigKeys.NOTIFICATION_ID)}
+                            onChange={newValue => {
+                                props.globalConfig.setAsync(props.currentUser + "_" + GlobalConfigKeys.NOTIFICATION_ID, newValue);
+                            }}
+                            options={options}
+                            width="320px"
+                        />
+                    </FormField>
+                </Box>
             </div>
             <Box display="flex" marginBottom={2}>
                 <Button
