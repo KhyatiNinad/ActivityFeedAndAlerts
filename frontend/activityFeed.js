@@ -59,7 +59,7 @@ export class ActivityFeed extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    
+
     this.allowNotification = this.props.allowNotification;
 
     if ((prevProps.timeStamp) !== (this.props.timeStamp)) {
@@ -84,13 +84,13 @@ export class ActivityFeed extends React.Component {
 
 
         if (lastData.length > 0 && currentData.length > 0) {
-          console.log("Writing Diff:");
-          console.log(lastData);
-          console.log(currentData);
+          //  console.log("Writing Diff:");
+          //  console.log(lastData);
+          //   console.log(currentData);
 
           if (typeof lastData[0].records !== 'undefined' && typeof currentData[0].records !== 'undefined') {
             var difference = diff(lastData[0].records, currentData[0].records);
-            console.log(difference);
+            // console.log(difference);
             if (typeof difference !== 'undefined') {
               var allRecords = this.props.records.data.filter((e) => { return e.id == tabId });
               var rec = [];
@@ -98,7 +98,7 @@ export class ActivityFeed extends React.Component {
                 rec = allRecords[0].records;
 
               for (var i = 0; i < difference.length; i++) {
-                console.log(difference[i][0]);
+                //  console.log(difference[i][0]);
                 if (difference[i][0] !== ' ') {
 
                   var recId = '';
@@ -112,7 +112,7 @@ export class ActivityFeed extends React.Component {
 
                   var thisRecord = rec.filter((e) => { return e._id == recId });
 
-                  console.log("..." + difference[i][0] + " : " + i + " : " + (difference[i][1]) + recId);
+                  // console.log("..." + difference[i][0] + " : " + i + " : " + (difference[i][1]) + recId);
 
                   var feedExist = this.feed.filter((e) => { return e.recordId === recId });
 
@@ -125,43 +125,67 @@ export class ActivityFeed extends React.Component {
                       recordName = updatedRecord[0].name;
 
 
+                    var shouldPush = true;
 
-                    var item = { updates: [] };
-                    if (feedExist.length > 0)
-                      item = feedExist[0];
+                    //handle cases where primary key is null
+                    try {
+                      var keys = difference[i][1].records;
+                      var keyCnt = 0;
+                      for (const [key, value] of Object.entries(keys)) {
 
-                    if (thisRecord.length > 0) {
-                      item.tableId = tabId;
-                      if (item.activity !== "+")
-                        item.activity = difference[i][0];
-                      item.recordId = recId;
-                      item.record = thisRecord[0];
-                      item.timeStamp = moment().utc().unix();
-                      item.recordName = recordName;
+                        keyCnt++;
+                        if (typeof value === 'undefined' && key.indexOf('_added') >= 0)
+                          shouldPush = false;
+                      }
+                      if (keyCnt > 1)
+                        shouldPush = true;
+
+                    }
+                    catch (e) {
+
+                    }
 
 
-                      if (difference[i][0] !== "+") {
+                    if (shouldPush) {
+                      var item = { updates: [] };
+                      if (feedExist.length > 0)
+                        item = feedExist[0];
 
-                        var upd = difference[i][1].records;
+                      if (thisRecord.length > 0) {
+                        item.tableId = tabId;
+                        if (item.activity !== "+")
+                          item.activity = difference[i][0];
+                        item.recordId = recId;
+                        item.record = thisRecord[0];
+                        item.timeStamp = moment().utc().unix();
+                        item.recordName = recordName;
 
-                        if (typeof item.updates == 'undefined')
-                          item.updates = [];
-                        if (typeof upd !== 'undefined') {
-                          if (upd != null) {
-                            for (const [key, value] of Object.entries(upd)) {
 
-                              item.updates.push({
-                                field: key,
-                                value: value,
-                                timeStamp: item.timeStamp
-                              });
+                        if (difference[i][0] !== "+") {
+
+                          var upd = difference[i][1].records;
+
+                          if (typeof item.updates == 'undefined')
+                            item.updates = [];
+                          if (typeof upd !== 'undefined') {
+                            if (upd != null) {
+                              for (const [key, value] of Object.entries(upd)) {
+
+                                if (typeof value !== 'undefined') {
+                                  item.updates.push({
+                                    field: key,
+                                    value: value,
+                                    timeStamp: item.timeStamp
+                                  });
+                                }
+                              }
                             }
                           }
                         }
-                      }
 
-                      if (feedExist.length == 0)
-                        this.feed.push(item);
+                        if (feedExist.length == 0)
+                          this.feed.push(item);
+                      }
                     }
                   }
                   else {
@@ -265,7 +289,10 @@ export class ActivityFeed extends React.Component {
   }
 
   getVal = (val) => {
+
     if (typeof val === 'object') {
+
+
       if (typeof val.name !== 'undefined')
         val = val.name;
 
@@ -285,6 +312,42 @@ export class ActivityFeed extends React.Component {
     }
     return val;
   }
+
+  getArrayVal = (val, type) => {
+    var value = '';
+
+    try {
+
+      if (typeof val[0].name !== 'undefined') {
+        if (type === 'new')
+          value = val[0].name + " added";
+        else if (type === 'old')
+          value = val[0].name + " removed";
+
+
+      }
+      else {
+        for (var i = 0; i < val.length; i++) {
+          if (val[i][0] === '+' && type == 'new') {
+            value = '' + val[i][1].name + ' added';
+          }
+          if (val[i][0] === '-' && type == 'old') {
+            value = '' + val[i][1].name + ' removed';
+          }
+          if (val[i][0] === '~') {
+            if (type === 'old')
+              value = this.getVal(val[i][1].name.__old);
+            else
+              value = this.getVal(val[i][1].name.__new);
+
+          }
+        }
+      }
+    }
+    catch (e) { }
+    return value;
+  }
+
   render() {
 
     var box = (
@@ -373,65 +436,91 @@ export class ActivityFeed extends React.Component {
 
               var val = r.value;
 
+              //console.log("Value:")
+              //console.log(val);
               var oldVal = '';
               var newVal = '';
               if (r.field.indexOf('__added') >= 0) {
-                try {
+                if (Array.isArray(val)) {
                   oldVal = '';
-                  newVal = this.getVal(val);
-
+                  newVal = this.getArrayVal(val, 'new');
                 }
-                catch (e) { }
+                else {
 
 
-                if (newVal === 'N/A') {
                   try {
-                    newVal = this.getVal(val.name.__new);
+                    oldVal = '';
+                    newVal = this.getVal(val);
+
                   }
                   catch (e) { }
+
+
+                  if (newVal === 'N/A') {
+                    try {
+                      newVal = this.getVal(val.name.__new);
+                    }
+                    catch (e) { }
+                  }
+                  if (newVal !== 'N/A')
+                    newVal += " added";
                 }
-                if (newVal !== 'N/A')
-                  newVal += " added";
               }
               else if (r.field.indexOf('__deleted') >= 0) {
-                try {
-                  oldVal = this.getVal(val);
-                  newVal = '';//this.getVal(val);
 
+                if (Array.isArray(val)) {
+                  newVal = '';
+                  oldVal = this.getArrayVal(val, 'old');
                 }
-                catch (e) { }
-
-
-                if (oldVal === 'N/A') {
+                else {
                   try {
-                    oldVal = this.getVal(val.name.__old);
+                    oldVal = this.getVal(val);
+                    newVal = '';//this.getVal(val);
+
                   }
                   catch (e) { }
+
+
+                  if (oldVal === 'N/A') {
+                    try {
+                      oldVal = this.getVal(val.name.__old);
+                    }
+                    catch (e) { }
+                  }
+                  if (oldVal !== 'N/A')
+                    oldVal += " removed";
                 }
-                if (oldVal !== 'N/A')
-                  oldVal += " removed";
               }
               else {
-                try {
-                  oldVal = this.getVal(val.__old);
-                  newVal = this.getVal(val.__new);
-
+                if (Array.isArray(val)) {
+                  oldVal = this.getArrayVal(val, 'old');
+                  newVal = this.getArrayVal(val, 'new');
+                  if (oldVal !== '' && newVal !== '') {
+                    newVal = " → " + newVal;
+                  }
                 }
-                catch (e) { }
-
-                if (oldVal === 'N/A') {
+                else {
                   try {
-                    oldVal = this.getVal(val.name.__old);
+                    oldVal = this.getVal(val.__old);
+                    newVal = this.getVal(val.__new);
+
                   }
                   catch (e) { }
-                }
-                if (newVal === 'N/A') {
-                  try {
-                    newVal = this.getVal(val.name.__new);
+
+                  if (oldVal === 'N/A') {
+                    try {
+                      oldVal = this.getVal(val.name.__old);
+                    }
+                    catch (e) { }
                   }
-                  catch (e) { }
+                  if (newVal === 'N/A') {
+                    try {
+                      newVal = this.getVal(val.name.__new);
+                    }
+                    catch (e) { }
+                  }
+                  newVal = " → " + newVal;
                 }
-                newVal = " → " + newVal;
               }
               return (
                 <Box
