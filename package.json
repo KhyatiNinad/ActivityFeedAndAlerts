@@ -3,7 +3,7 @@
         "@airtable/blocks": "0.0.53",
         "html-react-parser": "^0.13.0",
         "json-diff": "^0.5.4",
-        "moment": "^2.27.0",
+        "moment": "^2.29.2",
         "react": "^16.13.0",
         "react-browser-notifications": "^1.0.14",
         "react-dom": "^16.13.0",
